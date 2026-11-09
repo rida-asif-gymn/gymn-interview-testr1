@@ -833,3 +833,254 @@ How can I import this chat for the Prompts.md? or can u adddurself in it, and th
 ## Claude
 
 > 🔧 Ran: Inspect local git state and the target GitHub repo
+
+> 🔧 export_transcript
+
+> 🔧 Ran: List files tracked in the current commit
+
+> 🔧 Ran: Unzip the export and inspect the transcript format
+
+I'll turn the export into readable Markdown. It will keep your messages, my replies, and a one-line note for each file I wrote or command I ran, and leave out the app's internal system text:
+
+> 🔧 Write `to_md.py`
+
+> 🔧 Ran: Convert transcript to Markdown and check for leaked internals
+
+> 🔧 Ran: Check the structure and ending of the generated PROMPTS.md
+
+My replies' own headings clash with the "Me / Claude" headings, so I'll push them one level down. Then I'll commit, drop the stray `.DS_Store` file from the repo, and push:
+
+> 🔧 Ran: Regenerate PROMPTS.md, copy it into the repo and stage changes
+
+That replacement pushed my headings down two levels instead of one. Correcting it before I commit:
+
+> 🔧 Ran: Fix heading level, commit, and push to main
+
+The push worked. Now I'll check it from GitHub's side the way the grader will: a clean clone of `main`, then both Docker builds:
+
+> 🔧 Ran: Clone main fresh, build test and runtime stages, check health
+
+I added this chat to PROMPTS.md myself and pushed it to `main` on [rida-asif-gymn/gymn-interview-testr1](https://github.com/rida-asif-gymn/gymn-interview-testr1). Then I checked it the way the grader will: a fresh clone of `main`, which is 300 KB against their 200 MB limit. The test build passed, the server started, and `/health` returned 200.
+
+**How I added the chat:** I used the app's export feature and converted the result to Markdown.
+- **Included:** every message you sent, including both pasted briefs (each tucked behind a collapsible "Pasted: …" section), every reply I wrote, and a one-line note for each file I wrote or command I ran.
+- **Left out:** raw command output, my hidden reasoning, and the app's internal system text. I checked that no file paths from your computer or email addresses ended up in the file.
+
+The raw export is also saved at `~/Downloads/session-export-1794230748405.zip` if you ever want the complete version.
+
+**PROMPTS.md stops at your request to add it.** Anything we say after that won't be in it. To include later messages, ask me to regenerate it before you submit.
+
+**I also removed `.DS_Store` from the repo.** It's a hidden Mac file that got committed by accident, and I added it to `.gitignore` so it stays out.
+
+**The repo is private, so GymNation can't see it yet.** Their grader has to clone it, so it needs to be public or shared with them before you paste the URL into the form. I won't change that without your OK.
+
+
+---
+
+## Me
+
+Yes, make public
+
+
+---
+
+## Claude
+
+> 🔧 Ran: Make the GitHub repo public and confirm anonymous access
+
+The repo is public now. I checked it without being signed in and the page loads, so GymNation's grader can clone it.
+
+For the form's **Repository URL** field:
+```
+https://github.com/rida-asif-gymn/gymn-interview-testr1
+```
+
+Before you press Submit:
+1. **Record the 5-minute walkthrough video.** Follow the outline from earlier: phones, then the invoice schedule, then reconciliation, then how you used AI, then the test run. Upload it somewhere that gives you a link anyone can open, such as YouTube (unlisted) or Loom.
+2. **Fill in the rest of the form:** video link, LinkedIn or GitHub profile, salary, notice period and visa.
+3. **Submit once.** You only get one application per email address.
+
+If you change any code before submitting, push it to `main`, since that's the only branch they check. If you'd like PROMPTS.md to include this last part of the chat too, ask me to regenerate it before you submit.
+
+
+---
+
+## Me
+
+While building it where there any concerns or issues that need to changed and figured out. For example, inputting non english characters, etc.
+
+
+---
+
+## Claude
+
+I'll test the edge cases you mention, starting with non-English characters, against the code as it is, rather than guessing:
+
+> 🔧 Ran: Send non-English and edge-case inputs to the app
+
+The runtime image doesn't include the test client, so I'll run the same probe in the test-stage image:
+
+> 🔧 Ran: Run the edge-case probe inside the test image
+
+> 🔧 Ran: Check whether mixed-script digits slip through phone and date checks
+
+> 🔧 Ran: Find every regex using \d in the app
+
+> 🔧 Ran: Restrict digit patterns to ASCII 0-9 and name the 405 code
+
+Now tests that lock this in, including the unusual characters that are correctly allowed:
+
+> 🔧 Ran: Add Unicode tests and run the full suite in Docker
+
+All 85 tests pass. I'll record the new decisions in NOTES.md:
+
+> 🔧 Ran: Append Unicode and duplicate assumptions to NOTES.md
+
+Yes. Checking non-English input turned up one real bug, which I've fixed. All 85 tests now pass (73 before, plus 12 new). These changes aren't on GitHub yet.
+
+### The bug: non-English digits
+
+Python's `\d` matches digits from every script, not only 0–9. So a phone like `05٥١٢٣٤٥٦٧`, which mixes Western and Arabic-Indic digits, was accepted and stored as `+9665٥١٢٣٤٥٦٧`. That caused two problems:
+- **The stored number was broken.** No system could dial it or match it.
+- **The one-member-per-phone rule could be bypassed.** The same real number typed in Western digits is a different string, so one phone could belong to two members.
+
+A reconciliation `month` written as `٢٠٢٦-١٠` was also accepted when it should have been rejected.
+
+**The fix:** every pattern now uses `[0-9]` instead of `\d`, in [countries.py](app/countries.py), [phones.py](app/phones.py) and [validate.py](app/validate.py). The new tests in [tests/test_unicode.py](tests/test_unicode.py) cover Arabic-Indic, Persian, full-width and mixed digits.
+
+### Everything else I tried
+
+| Input | Result | Correct? |
+|---|---|---|
+| Arabic name `نورة الحربي`, plan id `خطة` | Accepted, returned trimmed | ✅ The spec allows any name |
+| En-dash `–`, non-breaking space or tab inside a phone | `INVALID_PHONE` | ✅ The spec only removes spaces, hyphens and brackets |
+| Name made only of non-breaking spaces | `VALIDATION` | ✅ Trimming removes them |
+| Name made only of a zero-width space | Accepted | ⚠️ Arguable. Trimming doesn't treat it as whitespace. Recorded in NOTES.md |
+| Family emoji 👨‍👩‍👧‍👦 as a name | Counts as 7 characters | ⚠️ "Characters" is ambiguous in the spec. Recorded in NOTES.md |
+| `NaN`, a body that isn't valid text, huge numbers | `VALIDATION` / handled | ✅ |
+| Wrong HTTP method | Was `HTTP_ERROR`, now `METHOD_NOT_ALLOWED` | Small tidy-up |
+
+### How duplicates are handled
+
+There are four kinds, and each one is reported back differently:
+
+1. **The same phone in any spelling → `409 PHONE_TAKEN`.** Every phone is converted to one standard form (`+966551234567`) before saving, and lookups use that form. So `0551234567`, `966551234567` and `(055) 123-4567` all count as the same number. The error includes the ID of the member who already has it:
+   ```json
+   {"error": {"code": "PHONE_TAKEN", "message": "...", "existing_member_id": "mem_..."}}
+   ```
+   Requests that arrive at the same moment are handled too. The check and the save happen together under one lock, so two simultaneous requests can't both pass the check. The walkthrough script fires 10 at once and gets one 201 and nine 409s.
+
+2. **The same plan ID → `409 PLAN_EXISTS`.** This uses the same lock.
+
+3. **The same `gateway_txn_id` twice in one reconciliation file → `422 INVALID_ROWS`.** The whole file is rejected, and every copy of the row is listed, so the caller can see exactly which rows to fix:
+   ```json
+   {"error": {"code": "INVALID_ROWS", "errors": [
+     {"gateway_txn_id": "T-1", "code": "DUPLICATE_TXN"},
+     {"gateway_txn_id": "T-1", "code": "DUPLICATE_TXN"}]}}
+   ```
+
+4. **Two different payments for the same invoice → `DOUBLE_CHARGE_RISK`.** This isn't an error. The run still succeeds, and every payment involved gets this verdict so finance can refund one of them.
+
+**Duplicates that are allowed on purpose:** members sharing a name, a member holding several agreements, and the same transaction ID in two separate runs. Each run is checked on its own, and the spec doesn't say otherwise. That last one is a likely feature they might ask you to add in the interview.
+
+
+---
+
+## Me
+
+Yes, push
+
+
+---
+
+## Claude
+
+> 🔧 Ran: Commit the Unicode fixes and push to main
+
+The fix is pushed to `main` on [rida-asif-gymn/gymn-interview-testr1](https://github.com/rida-asif-gymn/gymn-interview-testr1). The commit is called "Accept only ASCII digits in phones, dates and months; name 405 errors". It includes the digit fix, the 12 new tests and the new lines in NOTES.md, and the repo is still public.
+
+PROMPTS.md still ends where you first asked me to add the chat. The digit bug and the duplicates explanation came after that, and they're good material for the reviewers and your video: they show you checked the AI's work and caught a real bug. I can regenerate it now so it covers the whole conversation.
+
+
+---
+
+## Me
+
+*(ran in terminal)* `./scripts/try-it.sh`
+
+> [The user typed into the terminal pane (tab 0) while this command was running, so output after that point is not included; it may still be running there, or they may have stopped it. Use read_terminal
+
+
+---
+
+## Claude
+
+> 🔧 read_terminal
+
+> 🔧 Edit `scripts/try-it.sh`
+
+> 🔧 Ran: Test the new guard, rebuild, restart server, rerun walkthrough
+
+Nothing was wrong with the API. No server was running when the script ran: you removed my background server and then stopped yours with Ctrl+C. `HTTP 000` means nothing answered at all.
+
+**Now:**
+- **The server is running again** on port 8080 as `gulf-api`, built from the latest code with the digit fix. I reran the walkthrough against it and every request got a real answer: 200s, 201s, 404s, 409s and 422s as expected, with no `000`s.
+- **The script checks for a server first.** If none is running, it stops with this message instead of a page of errors:
+  ```
+  No server answering at http://localhost:8080.
+  Start it first in another terminal:  docker build -t app . && docker run -p 8080:8080 app
+  ```
+
+You can run it now in your terminal tab:
+```bash
+./scripts/try-it.sh
+```
+
+**Tips for the server:**
+- Leave it running while you test. Ctrl+C in the window where the server is running stops it.
+- If you'd rather watch its logs, stop mine with `docker rm -f gulf-api`, run `docker run -p 8080:8080 app` in one tab, and run the script from a second tab.
+
+
+---
+
+## Me
+
+*(ran in terminal)* `./scripts/try-it.sh`
+
+>   10 409
+
+
+---
+
+## Claude
+
+This output is actually the API working correctly. The script ran a second time against the same server, and the server still remembered everything from the first run. So Noura's phone was already taken (`409 PHONE_TAKEN`) and the plans already existed (`409 PLAN_EXISTS`). Every later step then failed because it had no new member ID to use. The script was written to run once on a fresh server, and that's my oversight.
+
+I'll make each run use its own phone numbers and plan IDs so you can rerun it as often as you like:
+
+> 🔧 Read `scripts/try-it.sh`
+
+> 🔧 Write `scripts/try-it.sh`
+
+> 🔧 Ran: Run the walkthrough twice on the same server
+
+You can now run `./scripts/try-it.sh` as many times as you like on the same server. I ran it twice in a row against your running server, and both runs gave the expected results: Noura created (201), the spec's invoice numbers, the double-charge case, and the race ending as one 201 and nine 409s.
+
+**Why your run went wrong:** the server keeps everything in memory until it's stopped, and the brief requires that. On the second run, the server correctly answered "phone already taken" and "plan already exists". The script then had no member ID to use, so every later step broke. The API was right; my script assumed a fresh server.
+
+**What changed in the script:**
+- **Fresh data every run.** Each run picks random phone numbers and plan IDs and prints them at the top, for example `This run: Saudi phone 0556928217`.
+- **A clean stop on failure.** If a step can't create what later steps need, the script stops with one clear line instead of Python errors.
+- **A note on the reconciliation step.** Its `unmatched_invoices` list will also include October invoices from earlier runs. That's correct, since a run considers every agreement on the server.
+
+**One thing you saw is worth understanding for the interview:** each "409 already exists" in your output is the duplicate protection doing its job. If you ever want a completely clean server, restart the container:
+```bash
+docker restart gulf-api
+```
+
+
+---
+
+## Me
+
+Ok good enough for now, yes please update Prompt.md too
