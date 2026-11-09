@@ -8,7 +8,8 @@ from .countries import COUNTRIES, Country
 from .errors import ApiError
 
 _STRIP = re.compile(r"[ \-()]")
-_SHAPE = re.compile(r"\+?\d+")
+# [0-9], not \d: in Python \d also matches Arabic-Indic and other scripts' digits.
+_SHAPE = re.compile(r"\+?[0-9]+")
 
 
 def _invalid(msg: str = "Not a valid AE, SA or BH mobile number") -> ApiError:

@@ -7,8 +7,8 @@ from typing import Any, Iterable, Optional
 
 from .errors import validation
 
-_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
-_MONTH = re.compile(r"(\d{4})-(\d{2})")
+_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+_MONTH = re.compile(r"([0-9]{4})-([0-9]{2})")
 
 
 def obj(body: Any) -> dict:

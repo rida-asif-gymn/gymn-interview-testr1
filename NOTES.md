@@ -65,3 +65,9 @@ then `.venv/bin/pytest` or `.venv/bin/uvicorn app.main:app --port 8080`.
 - Expected invoices include every agreement in the store, not only those referenced by rows.
 - A run's result is frozen when created; later agreements do not change `GET /reconciliation/runs/{id}`.
 - Unknown routes return `404 NOT_FOUND` in the standard error shape; unexpected exceptions return `500 INTERNAL`.
+- Digits mean ASCII 0–9 only. Arabic-Indic, Persian and full-width digits in phones, dates and months are rejected (`INVALID_PHONE` / `VALIDATION`), never converted. (Python's `\d` matches all scripts' digits, so patterns use `[0-9]`.)
+- Only ASCII space, `-`, `(`, `)` are stripped from phones; en-dash, non-breaking space and tab are `INVALID_PHONE`.
+- Names may use any script. Trimming is Python `str.strip()` (Unicode whitespace); length is counted in Unicode code points, so an emoji built from several code points counts as several characters.
+- A name of only a zero-width space is accepted: it is not whitespace, so trimming leaves one character.
+- The same `gateway_txn_id` in two separate runs is not a duplicate: each run is checked on its own.
+- Wrong HTTP method is `405 METHOD_NOT_ALLOWED` in the standard error shape.
